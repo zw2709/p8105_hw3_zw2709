@@ -170,7 +170,7 @@ As is shown in 'data_new', there are six variables in total:`r names(data_new)`
 
 The variable 'day','vs','activity_name' are characters and the remaining are numerical measures.
 
-The dataset has `r nrow(data_new)` rows, so there are `r nrow(data_new)` observations.
+The dataset has `r nrow(data_new)` rows, and has `r nrow(data_new)` observations.
 
 
 
@@ -260,12 +260,198 @@ From the weekdays, it seems that the peak activity time of 20 p.m. to 22 p.m. oc
 
 
 
+## Problem 3
+
+
+
+import data
+```{r}
+library(p8105.datasets)
+data("ny_noaa")
+```
+
+The dataset contains information about core variables for all New York state weather stations during some time period. 
+
+
+
+The variables contained are `r names(ny_noaa)`.
+So the key variables besides 'id' and 'date' are: prcp, snow, snwd, tmax, tmin, which are some key weather variables of the stations.
+
+
+
+These five variables all contain missing values, and the number of missing values are as follows:
+prcp: `r sum(is.na(ny_noaa$prcp))`; snow: `r sum(is.na(ny_noaa$snow))`; snwd: `r sum(is.na(ny_noaa$snwd))`; tmax: `r sum(is.na(ny_noaa$tmax))`; tmin: `r sum(is.na(ny_noaa$tmin))`. 
+
+Overall, the 'tmax' and 'tmin' contain a relatively high level of missing values, might reduce the accuracy of result to some extent.
+
+
+
+
+
+The dataset has `r nrow(ny_noaa)` rows and `r ncol(ny_noaa)` columns, so the size of dataset is `r nrow(ny_noaa)` * `r ncol(ny_noaa)`.
 
 
 
 
 
 
+### 1)
+
+data cleaning
+
+```{r}
+ny_data = 
+  ny_noaa %>% 
+  drop_na() %>% 
+  mutate(date, date = as.character(date)) %>% 
+  separate(date, into = c('year', 'month', 'day')) %>% 
+  
+  mutate(prcp, prcp = as.numeric(prcp)) %>% 
+  mutate(snow, snow = as.numeric(snow)) %>% 
+  mutate(snwd, snwd = as.numeric(snwd)) %>% 
+  mutate(tmax, tmax = as.numeric(tmax)) %>% 
+  mutate(tmin, tmin = as.numeric(tmin))
+```
+
+
+
+
+
+
+
+
+
+Since 'prcp' measures Precipitation (tenths of mm), 'tmax' and 'tmin' measures temperatures in tenths of degrees C, so we divide each value by ten to get reasonable units.
+
+```{r}
+ny_data_ = 
+  ny_data %>% 
+  mutate(
+    tmax = tmax / 10,
+    tmin = tmin / 10, 
+    prcp = prcp / 10
+  )
+```
+
+
+For snowfall, the most commonly observed values are 0 with the number of 111758, meaning the station did not have snow during specific period.
+```{r}
+ny_data_ %>% 
+  count(snow) %>% 
+	arrange(desc(n)) 
+```
+
+
+
+
+
+
+### 2)
+
+Make the two-panel plot.
+
+
+The plot may consist of two sub-plots for January and July. For each sub-plot, the x-axis is measurement of years denoted by 'year', and the y-axis is the average max temperatures denoted by 'tmax', and the color of the lines represent different stations.
+
+
+
+```{r}
+ny_data_ %>% 
+  filter(month %in% c('01','07')) %>% 
+  group_by(year, id, month, tmax) %>% 
+  summarize(
+    mean_tmax = mean(tmax, na.rm = TRUE)
+  ) %>% 
+
+  ggplot(aes(x = year, y = mean_tmax, color = id))+
+  geom_point(alpha = 0.5)+
+  geom_smooth(se = FALSE) +
+  labs(
+    title = "temperature level",
+    x = "year",
+    y = "average max temperature"
+  ) + 
+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
+  theme(legend.position = 'none') +
+  facet_grid(month ~ .)
+
+```
+
+
+
+It is observed that the average max temperatures in July (around 20-40 degrees)is higher than that in January (around -20-20 degrees). 
+
+
+The range of temperatures (max-min) in January seems to be larger than that of July, meaning more changes in max temperature and unstable status.
+
+
+There are some outliers both for the two months. The outliers in January seem to be seen obviously seen at around 1995 for over 20 degrees.
+
+
+The outliers in July are usually lower than the average level, and some obvious ouliers occur at about 1989,1991 and 2000.
+
+
+
+
+
+
+### 3)
+
+Then make the two-panel plot.
+
+
+For the first plot, it is tmax vs tmin for the full dataset.
+
+
+
+For the second plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
+
+
+
+Then we need to combine two sub-plots to get the two-panel plot.
+
+
+
+```{r}
+library(patchwork)
+
+temp = 
+  ny_data_ %>% 
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_hex()+
+  labs(
+    title = "Temperature plot",
+    x = "Minimum temperature (C)",
+    y = "Maxiumum temperature (C)"
+  ) +
+  viridis::scale_color_viridis(
+    name = 'Location',
+    discrete = TRUE)
+
+
+
+
+snowfall = 
+  ny_data_ %>% 
+  filter(snow > 0 & snow < 100) %>% 
+  ggplot(aes(x = year, y = snow)) +   #x为name，显示三个图
+  geom_boxplot()+
+  labs(
+    title = "snowfall",
+    x = "year",
+    y = "snowfall"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  
+temp_snowfall_plot = temp / snowfall
+
+```
+
+
+```{r fig.width=8, fig.height=10}
+temp_snowfall_plot
+```
 
 
 
