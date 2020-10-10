@@ -83,3 +83,198 @@ instacart %>%
 		values_from = mean_hour
 	)
 ```
+
+
+
+
+
+## Problem 2
+
+
+### 1)
+
+First import the data.
+Then load, tidy and wrangle data.
+
+```{r}
+data =
+  read_csv('./data/accel_data.csv') %>% 
+  janitor::clean_names() %>% 
+  
+  pivot_longer(
+    activity_1 : activity_1440,
+    names_to = 'activity_minute',
+    names_prefix = 'activity_',
+    values_to = 'activity_counts'
+  ) 
+  
+
+```
+Increase a new variable.
+
+```{r}
+
+data_ = mutate(
+  data,
+  vs = case_when(
+    day %in% c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday') ~'weekday',
+    day %in% c('Saturday', 'Sunday') ~'weekend',
+    TRUE ~ ''
+  ) 
+)
+
+
+```
+
+
+
+Then we encode the data and show them in order
+
+
+We need to change the variable classes.
+
+```{r}
+data_classes = 
+  data_ %>% 
+  mutate(
+    activity_minute = as.numeric(activity_minute),
+    activity_counts = as.numeric(activity_counts),
+    week = as.numeric(week),
+    day_id = as.numeric(day_id),
+    day = as.character(day),
+    vs = as.character(vs)
+    
+  )
+```
+
+Have another 'day_df' variable whose class is integer to denote the 'day' character, so that the order based on week and day would be satisfied.
+```{r}
+
+day_df = 
+  tibble(
+    day_number = 1:7,
+    day = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+  )
+
+data_new = 
+  left_join(data_classes, day_df, by = 'day') %>% 
+  relocate(week, day, vs) %>% 
+  arrange(week, day_number) %>% 
+  select(-day_number) 
+
+
+
+```
+
+As is shown in 'data_new', there are six variables in total:`r names(data_new)`
+
+The variable 'day','vs','activity_name' are characters and the remaining are numerical measures.
+
+The dataset has `r nrow(data_new)` rows, so there are `r nrow(data_new)` observations.
+
+
+
+
+
+### 2)
+
+
+Create a table
+
+```{r}
+
+data_new %>% 
+  group_by(week, day) %>% 
+  summarize(sum_activity_counts = sum(activity_counts)) %>% 
+  pivot_wider(
+    names_from = week, 
+    values_from = sum_activity_counts
+  ) %>% 
+  knitr::kable()
+```
+
+
+
+
+
+The table reflects data about 7 days of one week and the total 5 weeks, and the data were the total number of the activity counts.
+
+For the first two weeks, the most active activity counts are during weekends(Sunday for week 1, Saturday for week 2). For the remaing three weeks, the most active activities counts occur during the weekdays.
+
+For week 4 and week 5, the activity level for Saturday seems to be low compared with others.
+
+
+
+
+
+### 3)
+
+The single-panel plot would have x axis of the 24 hours with the measurement of time, and would have y axis of the activity counts. Then we use different colors of lines to represent different days of the week.
+
+```{r}
+data_plot = 
+  data_new %>% 
+  ggplot(aes(x = activity_minute, y = activity_counts, color = day)) +
+  geom_point(alpha = 0.5) +
+  labs(
+    title = "Activity level",
+    x = "time measurement",
+    y = "activity counts"
+  ) + 
+  
+  scale_x_continuous(
+    breaks = c(0,60,120,180,240,300,360,420,480,540,600,660,720,780,840,900,960,1020,1080,1140,1200,1260,1320,1380,1440),
+    labels = c("0","1h","2h","3h","4h","5h","6h","7h","8h","9h","10h","11h","12h","13h","14h","15h","16h","17h","18h","19h","20h","21h","22h","23h","24h")
+  ) +
+
+  scale_y_continuous(
+  
+    trans = "sqrt", 
+    position = "right"
+  ) + 
+  geom_line() +
+  
+  viridis::scale_color_viridis(
+    name = 'day of week',
+    discrete = TRUE) +
+  theme_minimal()+
+  theme(legend.position = 'bottom')
+```
+
+
+
+```{r fig.width=12, fig.height=6}
+data_plot
+```
+
+
+
+From the perspective of 24 hours in a day, the midnight time would have low level of activity level (midnight to about 6 o'clock). The time period between 20 p.m. to 22 p.m. at night seem to have higher values of activity counts and are regarded to be active.
+
+From the weekdays, it seems that the peak activity time of 20 p.m. to 22 p.m. occurs frequently for Friday, meaning the relative active status of Friday night.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
